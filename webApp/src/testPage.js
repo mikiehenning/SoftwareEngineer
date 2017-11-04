@@ -8,6 +8,10 @@ import {
     AuthPage, WelcomeParagraph
 } from './styleForm';
 
+import {
+    InputField, InputGroup, StackedInputs, SubmitButton
+} from './shared';
+
 class TestPage extends Component {
     constructor(props) {
         super(props);
@@ -23,9 +27,30 @@ class TestPage extends Component {
     render() {
         return (
             <AuthPage subtitle="Sign in to Corstata">
-                <InputBox>test</InputBox>
-                <HelpmMessage>does this also work?</HelpmMessage>
-                <LoginForm>test</LoginForm>
+                <StackedInputs>
+                    <InputField
+                        type="email"
+                        name="uname"
+                        id="username"
+                        value={this.state.email}
+                        onInput={this.changeUsername}
+                        placeholder="Email address"
+                        required
+                        autoFocus
+                    />
+                    <InputGroup>
+                        <InputField
+                            type="password"
+                            name="password"
+                            onInput={this.changePassword}
+                            placeholder="Password"
+                            required
+                        />
+                        <SubmitButton>
+                            <i className="fa fa-sign-in fa-lg" />
+                        </SubmitButton>
+                    </InputGroup>
+                </StackedInputs>
             </AuthPage>
         );
     }; //no semi colon here before
