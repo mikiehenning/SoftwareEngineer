@@ -1,7 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
-import 'components/authentication/loginScreen';
+import TestPage from './testPage';
+import registerServiceWorker from './registerServiceWorker';
 
-ReactDOM.render(<loginScreen />, document.getElementById('root'));
+ReactDOM.render(<TestPage />, document.getElementById('root'));
 registerServiceWorker();
