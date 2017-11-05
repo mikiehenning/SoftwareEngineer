@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled';
-
+import pattern from 'assets/assepattern_photos.png';
 
 export const Container = styled.div`
 display: flex;
@@ -22,7 +22,7 @@ width: 20px;
 
 export const HelpmMessage = styled.p`
 padding:1em;
-
+color:blue;
 `;
 
 export const LoginForm = styled.form`
@@ -93,6 +93,7 @@ height: 100%;
     );
 }
 `;
+
 export const WelcomeParagraph = styled.h4`
 font-size: 26px;
 font-weight: normal;
