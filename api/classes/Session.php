@@ -3,8 +3,8 @@ require_once __DIR__ . '/../config/global.php';
 
 class Session {
   private static $self_instance;
-  private $mysqli;
-  public $sid;
+  private $mysqli; //reference to the database
+  public $sid; //session ID
 
   public function __construct($dbc){
     $this->mysqli = $dbc;
@@ -29,25 +29,37 @@ class Session {
   }
 
   //TODO implement a function to register institutions
-  public function registerInstitution()[
+  public function registerInstitution(){
 
-  ]
+  }
   //TODO implement a function to register accounts
   public function registerAccount(){
 
   }
   //TODO implement a change password
-  public function changePassword($oldPassword, $newPassword, $newPasswordConf){
+  public function changePassword($oldPassword, $newPassword){
+    if($oldPassword != $newPassword){
+      $newSalt = random_bytes(32); //new password, new salt
+      $saltedPassword = $newSalt.$newPassword;
+      $hash = hash('scrypt',$newPassword);
 
+      $qry = $this->mysqli->prepare("UPDATE account SET hash = ?, salt = ? WHERE accountID = (SELECT accountID FROM session, account WHERE session.accountID = account.accountID)")
+      $qry->bind_param("ss",$hash,$saltedPassword);
+      $qry->execute();
+      return true;
+    }
+    else {
+      return false;
+    }
   }
-  
+
 
   function validate($sid, $currentTime){
     $sid = htmlentities(mysqli_real_escape_string(this->mysqli),$sid);
     $qry = $this->mysqli->prepare("SELECT timeCreated, accountID FROM 'sessions' WHERE 'sid' = ?");
     $qry->bind_param("s",$sid);
     $qry->bind_result($timestamp,$uid);
-    $qry->execute()
+    $qry->execute();
     $qry->store_result();
     if($qry->num_rows >=1){
       while($qry->fetch()){
