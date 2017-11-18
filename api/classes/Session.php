@@ -40,11 +40,54 @@ class Session {
   public function changePassword($oldPassword, $newPassword, $newPasswordConf){
 
   }
-  
+
+  //TODO Test input. The test will take a type and call one of the following methods to input the data into the database
+  //It will also create a test entry in the database
+  //Ue $qry->insert_id after insert to get the last recorded insert
+  public function inputTest($type, $inputArray){
+
+  }
+
+  //TODO pressureWoundTest input method
+  public function inputPressureWoundTest($testID, $inputArray){
+
+  }
+
+  //TODO Mini-Nutritional Assessment input method
+  public function inputMiniNutritionalAssessment($testID, $inputArray){
+
+  }
+
+  //TODO Wagner test input method
+  public function inputWagnerTest($testID, $inputArray){
+
+  }
+
+  //TODO Monofiliment test input method
+  public function inputMonofilimentTest($testID, $inputArray){
+
+  }
+
+  //TODO method that searches the database with patient last name
+  public function findPatients($search){
+
+  }
+
+  //TODO Method to get all recent tests
+  public function getAllRecentTests($patientID){
+
+  }
+
+  //TODO Method to get all recent push scores with dates
+  public function getAllRecentScores($patientID){
+    
+  }
+
+
 
   function validate($sid, $currentTime){
     $sid = htmlentities(mysqli_real_escape_string(this->mysqli),$sid);
-    $qry = $this->mysqli->prepare("SELECT timeCreated, accountID FROM 'sessions' WHERE 'sid' = ?");
+    $qry = $this->mysqli->prepare("SELECT timeCreated, accountID FROM sessions WHERE sessionID = ?");
     $qry->bind_param("s",$sid);
     $qry->bind_result($timestamp,$uid);
     $qry->execute()
@@ -79,6 +122,7 @@ class Session {
   }
 
   //Validates the login credentials of the user
+  //TODO verify login with has and salt
   function validateLogin($email, $pass){
     //TODO add password hash functionallity
     $email = htmlspecialchars(mysqli_real_escape_string($this->mysqli, $email));
