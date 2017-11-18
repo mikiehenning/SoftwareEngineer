@@ -56,7 +56,7 @@ class Session {
 
   function validate($sid, $currentTime){
     $sid = htmlentities(mysqli_real_escape_string(this->mysqli),$sid);
-    $qry = $this->mysqli->prepare("SELECT timeCreated, accountID FROM 'sessions' WHERE 'sid' = ?");
+    $qry = $this->mysqli->prepare("SELECT timeCreated, accountID FROM sessions WHERE sessionID = ?");
     $qry->bind_param("s",$sid);
     $qry->bind_result($timestamp,$uid);
     $qry->execute();
@@ -91,6 +91,7 @@ class Session {
   }
 
   //Validates the login credentials of the user
+  //TODO verify login with has and salt
   function validateLogin($email, $pass){
     //TODO add password hash functionallity
     $email = htmlspecialchars(mysqli_real_escape_string($this->mysqli, $email));
