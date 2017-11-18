@@ -28,6 +28,20 @@ class Session {
     return self::$self_instance;
   }
 
+  //TODO implement a function to register institutions
+  public function registerInstitution()[
+
+  ]
+  //TODO implement a function to register accounts
+  public function registerAccount(){
+
+  }
+  //TODO implement a change password
+  public function changePassword($oldPassword, $newPassword, $newPasswordConf){
+
+  }
+  
+
   function validate($sid, $currentTime){
     $sid = htmlentities(mysqli_real_escape_string(this->mysqli),$sid);
     $qry = $this->mysqli->prepare("SELECT timeCreated, accountID FROM 'sessions' WHERE 'sid' = ?");
@@ -68,7 +82,7 @@ class Session {
   function validateLogin($email, $pass){
     //TODO add password hash functionallity
     $email = htmlspecialchars(mysqli_real_escape_string($this->mysqli, $email));
-    $qry = $this->$mysqli->prepare("SELECT * FROM account WHERE email = ? && password = ?");
+    $qry = $this->$mysqli->prepare("SELECT * FROM account WHERE emailAddress = ? && password = ?");
     $qry->bind_param("ss",$email,$pass);
     $qry->execute();
 
@@ -83,7 +97,7 @@ class Session {
   }
   //Gets the salt based off of an email
   function getSalt($email){
-    $qry = $this->$mysqli->prepare("SELECT salt FROM account WHERE email = ?");
+    $qry = $this->$mysqli->prepare("SELECT salt FROM account WHERE emailAddress = ?");
     $qry->bind_param("s",$email);
     $qry->execute();
 
@@ -155,7 +169,7 @@ class Session {
   //Takes either an email address or a session id and returns a user id
   function getUID($input){
     if(filter_var($input, FILTER_VALIDATE_EMAIL) == true){
-      $qry = $this->$mysqli->prepare("SELECT accountID from accounts where email = ?");
+      $qry = $this->$mysqli->prepare("SELECT accountID from accounts where emailAddress = ?");
       $qry->bind_param($input);
       $qry->execute();
 
