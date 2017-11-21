@@ -36,15 +36,18 @@ class Session {
   public function registerAccount(){
 
   }
+  public function getAccountType($uid){
+
+  }
   //TODO implement a change password
   public function changePassword($oldPassword, $newPassword){
     if($oldPassword != $newPassword){
       $newSalt = random_bytes(32); //new password, new salt
       $saltedPassword = $newSalt.$newPassword;
       $hash = hash('scrypt',$newPassword);
-
-      $qry = $this->mysqli->prepare("UPDATE account SET hash = ?, salt = ? WHERE accountID = (SELECT accountID FROM session, account WHERE session.accountID = account.accountID)")
-      $qry->bind_param("ss",$hash,$saltedPassword);
+      $uid = getUID($sid);
+      $qry = $this->mysqli->prepare("UPDATE account SET hash = ?, salt = ? WHERE accountID = ?")
+      $qry->bind_param("ssi",$hash,$saltedPassword,$uid);
       $qry->execute();
       return true;
     }
@@ -52,7 +55,6 @@ class Session {
       return false;
     }
   }
-
 
   function validate($sid, $currentTime){
     $sid = htmlentities(mysqli_real_escape_string(this->mysqli),$sid);
@@ -86,8 +88,12 @@ class Session {
     if($this->validateLogin($email, $pass)){
       //Get the userid
       $userid = $this->getUID($email);
-      if($this)
+      if($this->handleSID($userid)){
+        return 1;
+
+      }
     }
+    return 0;
   }
 
   //Validates the login credentials of the user

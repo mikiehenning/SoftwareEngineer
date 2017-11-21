@@ -6,12 +6,14 @@ function __autoload($className){
 
 $db = Database::getConnection();
 $session = new Session($db);
+$testCenter = new TestCenter($db,$session);
+$accountManager = new AccountManager($db,$session);
 
 foreach ($_POST as $key => $value) {
   $$key = trim($val);
 }
 
-$VALID_REQUESTS = array('login', 'register', 'checklogin', 'logout','createBlog','createEntry','refreshBlogs');
+$VALID_REQUESTS = array('login','logout');
 
 $httpXrequested = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
 
