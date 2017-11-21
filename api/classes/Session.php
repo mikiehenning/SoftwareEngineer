@@ -33,19 +33,34 @@ class Session {
 
   }
   //TODO implement a function to register accounts
-  public function registerAccount(){
+  public function registerAccount($email,$password,$insitutionID,$isAdmin){
+    //TODO sanitize inputs; ensure email is an email, ensure password doesn't have weird characters\
+    //TODO solve institution picking problem (see TODO 2.2.1.3)
 
+    $salt = random_bytes(32); //create salt for account
+    $saltedPassword = $salt.$password;
+    $hash = hash('scrypt',$saltedPassword);
+    $qry = $this->$mysqli->prepare("INSERT INTO account(emailAddress,hash,salt) VALUES(?,?,?)");
+    $qry->bind_param("sss",$email,$hash,$salt);
+    $qry->execute();
+    $incrementID = $mysqli->insert_id;
+    $qry->close();
+    $qry2 = $this->$mysqli->prepare("INSERT INTO clientAccount VALUES(?,?,?)");
+    $qry2->bind_param("i,i,i",$incrementID,$institutionID,$isAdmin);
+    $qry2->execute();
+    $qry2->close();
   }
-  //TODO implement a change password
+  //TODO implement a change password *NEEDS TESTING*
   public function changePassword($oldPassword, $newPassword){
     if($oldPassword != $newPassword){
       $newSalt = random_bytes(32); //new password, new salt
       $saltedPassword = $newSalt.$newPassword;
-      $hash = hash('scrypt',$newPassword);
+      $hash = hash('scrypt',$saltedPassword);
 
       $qry = $this->mysqli->prepare("UPDATE account SET hash = ?, salt = ? WHERE accountID = (SELECT accountID FROM session, account WHERE session.accountID = account.accountID)")
-      $qry->bind_param("ss",$hash,$saltedPassword);
+      $qry->bind_param("ss",$hash,$newSalt);
       $qry->execute();
+      $qry->close();
       return true;
     }
     else {
@@ -91,21 +106,34 @@ class Session {
   }
 
   //Validates the login credentials of the user
-  //TODO verify login with has and salt
-  function validateLogin($email, $pass){
-    //TODO add password hash functionallity
+  //TODO verify login with hash and salt *NEEDS TESTING*
+  function validateLogin($email, $passwordInput){
+    //TODO add password hash functionallity *NEEDS TESTING*
     $email = htmlspecialchars(mysqli_real_escape_string($this->mysqli, $email));
-    $qry = $this->$mysqli->prepare("SELECT * FROM account WHERE emailAddress = ? && password = ?");
-    $qry->bind_param("ss",$email,$pass);
-    $qry->execute();
+    //$qry = $this->$mysqli->prepare("SELECT * FROM account WHERE emailAddress = ? && password = ?");
+    //$qry->bind_param("ss",$email,$passwordInput);
+    //$qry->execute();
+    //$users = $qry->get_result();
+    //$qry->close();
+    //if(count($users) < 1){
+      //return false;
+    //}
+    //else{
+      //return true;
+    //}
 
-    $users = $qry->get_result();
-    $qry->close();
-    if(count($users) < 1){
-      return false;
+    $qry = $this->$mysqli->prepare("SELECT salt, hash FROM account WHERE emailAddress = ?")
+    $qry->bind_param("s",$email);
+    $qry->execute();
+    $qry->store_result();
+    $qry->bind_result($dbSalt,$dbHash);
+    $saltedInput = $dbSalt.$passwordInput;
+    $hashedInput = hash('scrypt',$saltedInput);
+    if($hashedInput == $dbHash){
+      return true; //hashes match, passwords match
     }
-    else{
-      return true;
+    else {
+      return false;
     }
   }
   //Gets the salt based off of an email
