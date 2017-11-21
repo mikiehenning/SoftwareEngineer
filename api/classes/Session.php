@@ -137,7 +137,7 @@ class Session {
 
   //Returns if a session currently exists for a given user
   function sessionExists($userID){
-    $qry = $this->$mysqli->prepare("SELECT * from sessions where accountID = ?");
+    $qry = $this->mysqli->prepare("SELECT * from sessions where accountID = ?");
     $qry->bind_param("i", $userID);
     $qry->execute();
 
