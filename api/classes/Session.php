@@ -29,37 +29,140 @@ class Session {
   }
 
   //TODO implement a function to register institutions
-  public function registerInstitution(){
-
+  public function registerInstitution($name, $address, $state, $city, $zipCode, $phoneNumber){
+    $uid = getUID($this->sid);
+    if(getAccountType($uid) == 2){
+      $qry = $this->$mysqli->prepare("INSERT INTO institution(name,address,state,city,zipCode,phoneNumber) VALUES(?,?,?,?,?,?)");
+      $qry->bind_param("ssssii",$name, $address, $state, $city, $zipCode, $phoneNumber);
+      $qry->execute();
+    }
+    else{
+      echo "You are not authorized for this requeset";
+    }
   }
-  //TODO implement a function to register accounts
-  public function registerAccount($email,$password,$insitutionID,$isAdmin){
+
+
+
+  public function registerAccount($email, $password, $isClient, $isAdmin, $institutionID){
     //TODO sanitize inputs; ensure email is an email, ensure password doesn't have weird characters\
     //TODO solve institution picking problem (see TODO 2.2.1.3)
+
 
     $salt = random_bytes(32); //create salt for account
     $saltedPassword = $salt.$password;
     $hash = hash('scrypt',$saltedPassword);
-    $qry = $this->$mysqli->prepare("INSERT INTO account(emailAddress,hash,salt) VALUES(?,?,?)");
+    $qry = $this->mysqli->prepare("INSERT INTO account(emailAddress,hash,salt) VALUES(?,?,?)");
     $qry->bind_param("sss",$email,$hash,$salt);
     $qry->execute();
-    $incrementID = $mysqli->insert_id;
+    //Get the institutionID for the insert into clientAccount
+    $incrementID = $qry->insert_id;
+    //If the created account is a client account create a client account
+    if($isClient == 1){
+      if($institutionID == -1){
+        //If no specified institutionID from the front end get one from the current users institutionID
+        $iID = $this->getInstitutionID();
+        if($iID != -1){
+          $this->registerClientAccount($incrementID,$iID,$isAdmin);
+          $qry->close();
+          return 1;
+        }
+        else{
+          $qry->close();
+          return 0;
+        }
+      }
+      else{
+        //Otherwise just use the one from the frontend
+        $this->registerClientAccount($incrementID,$institutionID,$isAdmin);
+        $qry->close();
+        return 1;
+      }
+    }
+    //Otherwise create a system account
+    else{
+      $this-registerSystemAccount($incrementID);
+      $qry->close();
+      return 1;
+    }
     $qry->close();
-    $qry2 = $this->$mysqli->prepare("INSERT INTO clientAccount VALUES(?,?,?)");
-    $qry2->bind_param("i,i,i",$incrementID,$institutionID,$isAdmin);
-    $qry2->execute();
-    $qry2->close();
+    return 0;
+  }
+  //Returns the institutionID for this user
+  function getInstitutionID(){
+    $uid = getUID($this->sid);
+    $qry = $this->mysqli->prepare("SELECT institutionID from clientAccount where accountID =  ?");
+    $qry->bind_param("i",$uid);
+    $qry->execute();
+    $result = $qry->get_result();
+    $qry->close();
+    return isset($result[0]['institutionID']) ? $result[0]['institutionID'] : -1;
+  }
+
+  function registerSystemAccount($accountID){
+    $qry = $this->mysqli->prepare("INSERT INTO systemAdmin VALUES(?)");
+    $qry->bind_param("iii",$accountID);
+    $qry->execute();
+    $qry->close();
+  }
+
+
+  function registerClientAccount($accountID, $institutionID, $isAdmin){
+    //Insert into client account
+    $qry = $this->mysqli->prepare("INSERT INTO clientAccount VALUES(?,?,?)");
+    $qry->bind_param("iii",$accountID,$institutionID,$isAdmin);
+    $qry->execute();
+    $qry->close();
   }
   public function getAccountType($uid){
+    //Select acountID FROM account
+    $qry = $this->mysqli->prepare("SELECT accountID from account where accountID =  ?");
+    $qry->bind_param("i",$uid);
+    $qry->execute();
+    //If it exists
+    if($qry->num_rows == 1){
+      //Pull the accounts is admin
+      $qry = $this->mysqli->prepare("SELECT isAdmin from account where accountID =  ?");
+      $qry->bind_param("i",$uid);
+      $qry->bind_result($isAdmin);
+      $qry->execute();
+      $qry->store_result();
+      //If that exists
+      if($qry->num_rows == 1){
+        while($qry->fetch()){
+          //If is admin the account is a client admin account
+          if($isAdmin == 1){
+            $qry->free_result();
+            $qry->close();
+            return 1;
+          }
+          //Otherwise its a standard client account
+          else if($isAdmin == 0){
+            $qry->free_result();
+            $qry->close();
+            return 0;
+          }
+        }
+      }
+      //Otherwise the account is a corstrata account
+      else{
+        $qry->free_result();
+        $qry->close();
+        return 2;
+      }
+    }
+    //If no account is found return -1 to specify
+    $qry->close();
+    return -1;
 
   }
   //TODO implement a change password
   public function changePassword($oldPassword, $newPassword){
+    //TODO You need to validate the old password
     if($oldPassword != $newPassword){
       $newSalt = random_bytes(32); //new password, new salt
       $saltedPassword = $newSalt.$newPassword;
       $hash = hash('scrypt',$newPassword);
-      $uid = getUID($sid);
+      $uid = getUID($this->sid);
       $qry = $this->mysqli->prepare("UPDATE account SET hash = ?, salt = ? WHERE accountID = ?")
       $qry->bind_param("ssi",$hash,$saltedPassword,$uid);
       $qry->execute();
@@ -131,8 +234,9 @@ class Session {
     $qry = $this->$mysqli->prepare("SELECT salt, hash FROM account WHERE emailAddress = ?")
     $qry->bind_param("s",$email);
     $qry->execute();
-    $qry->store_result();
     $qry->bind_result($dbSalt,$dbHash);
+    $qry->store_result();
+
     $saltedInput = $dbSalt.$passwordInput;
     $hashedInput = hash('scrypt',$saltedInput);
     if($hashedInput == $dbHash){
@@ -157,13 +261,13 @@ class Session {
   //Prevents more than one session per user
   public function handleSID($userID){
     if($this->sessionExists($userID)){
-      if (!$this->clearByUID($userid)) {
+      if (!$this->clearByUID($userID)) {
         //Couldnt clear the session, return a json element containing the error
         return json_encode("Couldn't clear SID when creating new session.");
       }
     }
     //Creates a session
-    if ($this->buildSID($userid)) {
+    if ($this->buildSID($userID)) {
       return true;
     }
     return false;
@@ -216,14 +320,14 @@ class Session {
   //Takes either an email address or a session id and returns a user id
   function getUID($input){
     if(filter_var($input, FILTER_VALIDATE_EMAIL) == true){
-      $qry = $this->$mysqli->prepare("SELECT accountID from accounts where emailAddress = ?");
+      $qry = $this->mysqli->prepare("SELECT accountID from accounts where emailAddress = ?");
       $qry->bind_param($input);
       $qry->execute();
 
       $result = $qry->get_result();
     }
     else{
-      $qry = $this->$mysqli->prepare("SELECT accountID from sessions where sessionID = ?");
+      $qry = $this->mysqli->prepare("SELECT accountID from sessions where sessionID = ?");
       $qry->bind_param($input);
       $qry->execute();
 
@@ -240,7 +344,7 @@ class Session {
 
   //Generates a random ID with a specified length
   function generateRandID($length) {
-    return md5($this->generateRandStr($length)
+    return md5($this->generateRandStr($length);
   }
 
   //Generates a random string with a length
@@ -258,6 +362,67 @@ class Session {
     }
     return $randstr;
   }
+
+  /*
+  TEST FUNCTIONS
+   */
+  function createTest($patientID){
+    $qry = $this->mysqli->prepare("INSERT INTO test (patientID, accountID, dateTaken) VALUES (?, ?, ?)");
+    $datetime = date_create()->format('Y-m-d H:i:s');
+    $uid = getUID($this->sid);
+    $qry->bind_param("iis",$patientID,$uid,$datetime);
+    if($qry->execute()){
+      return $qry->insert_id;
+    }
+    return -1;
+  }
+
+  public function createWagnerTest($patientID, $grade){
+    $testID = $this->createTest($patientID);
+    if($testID == -1){
+      echo "Test Failed to insert into the database";
+    }
+    else{
+      $qry = $this->mysqli->prepare("INSERT INTO test (testID, grade) VALUES (?, ?)");
+      $qry->bind_param("ii",$testID);
+    }
+  }
+  public function createSemmesTest(){
+
+  }
+  public function createMonofilimentTest(){
+
+  }
+  public function createMiniNutritionalTest(){
+
+  }
+  //TODO implement a function that takes all of the data from a pressure wound test and inserts it into the database
+  //TODO Call create test to get a test id and insert it into the test table
+  public function createPressureWoundTest(){
+
+  }
+  //TODO implement a function that takes the information from a pressure wound test and spits out a push score
+  function getPUSHScore(){
+
+  }
+  //TODO implement a function that takes the information from a pressure wound test and spits out a bates jensen score
+  function getBatesJensenScore(){
+
+  }
+  //TODO implement a function that takes the information from a pressure wound test and spits out a sussman score
+  function getSussmanScore(){
+
+  }
+  public function getRecentTests($patientID){
+
+  }
+  public function patientSearch($searchInput){
+
+  }
+  public function getPatientData($patientID){
+
+  }
+
 
 }
 
